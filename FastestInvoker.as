@@ -15,11 +15,17 @@
 	import flash.events.Event;
 	import flash.events.ProgressEvent;
 	import flash.net.URLLoader;
+	import flash.utils.getDefinitionByName;
+	import flash.text.TextField;
+	import flash.text.TextFieldAutoSize;
+	import flashx.textLayout.utils.CharacterUtil;
 	
 	public class FastestInvoker extends Minigame {
 		private static const _ZEROS:String = "0000000000000000000000000000000000000000"; // 40 zeros, shorten/expand as you wish
 		private static const TENINVOKES:int = 1;
 		private static const FIVECOMBOS:int = 2;
+		private static const TWENTYFLAWLESS:int = 3;
+		private static const ULTIMATE:int = 4;
 		
 		private static const QUAS:int = 1;
 		private static const WEX:int = 2;
@@ -48,6 +54,39 @@
 		private var invokesToGo:int = 10;
 		private var totalInvokes:int = 10;
 		private var toInvoke:int;
+		
+		private var useLegacy:Boolean = false;
+		private var dCharacter:String = "D";
+		private var dKeyCode:uint = Keyboard.D;
+		private var setKeyIndex:int = 0;
+		private var keyBinds:Array = new Array(Keyboard.Q, // Quas
+											   Keyboard.W, // Wex
+											   Keyboard.E, // Exort
+											   Keyboard.R, // Invoke
+											   Keyboard.D, // Cast
+											   Keyboard.NUMBER_1); // Refresh
+											   
+		private var legacyBinds:Object = {"invoker_sun_strike":Keyboard.T,
+										"invoker_chaos_meteor":Keyboard.D,
+										"invoker_alacrity":Keyboard.Z,
+										"invoker_emp":Keyboard.C,
+										"invoker_forge_spirit":Keyboard.F,
+										"invoker_deafening_blast":Keyboard.B,
+										"invoker_tornado":Keyboard.X,
+										"invoker_ice_wall":Keyboard.G,
+										"invoker_ghost_walk":Keyboard.V,
+										"invoker_cold_snap":Keyboard.Y};
+										
+		private var legacyBindChars:Object = {"invoker_sun_strike":"T",
+										"invoker_chaos_meteor":"D",
+										"invoker_alacrity":"Z",
+										"invoker_emp":"C",
+										"invoker_forge_spirit":"F",
+										"invoker_deafening_blast":"B",
+										"invoker_tornado":"X",
+										"invoker_ice_wall":"G",
+										"invoker_ghost_walk":"V",
+										"invoker_cold_snap":"Y"};
 		
 		private var gameData:Object;
 		
@@ -117,10 +156,53 @@
 			
 			trace(4);
 			
+			gameData = minigameAPI.getData();
+			
+			if (gameData.QCode){
+				keyBinds = new Array(uint(gameData.QCode), uint(gameData.WCode), uint(gameData.ECode),
+									 uint(gameData.RCode), uint(gameData.DCode), uint(gameData.RefresherCode));
+				dKeyCode = keyBinds[4];
+				dCharacter = gameData.DChar;
+				gameClip.qText.text = gameData.QChar;
+				gameClip.wText.text = gameData.WChar;
+				gameClip.eText.text = gameData.EChar;
+				gameClip.rText.text = gameData.RChar;
+				gameClip.dText.text = gameData.DChar;
+				gameClip.refresherText.text = gameData.RefresherChar;
+			}
+			
 			menuClip.mode1Button.textField.text = "10 INVOKES";
 			menuClip.mode1Button.addEventListener(MouseEvent.CLICK, mode1Click);
 			menuClip.mode2Button.textField.text = "5 COMBOS";
 			menuClip.mode2Button.addEventListener(MouseEvent.CLICK, mode2Click);
+			menuClip.mode3Button.textField.text = "20 FLAWLESS";
+			menuClip.mode3Button.addEventListener(MouseEvent.CLICK, mode3Click);
+			menuClip.mode4Button.textField.text = "ULTIMATE";
+			/*if (menuClip.mode4Button.textField.textWidth > menuClip.mode4Button.textField.width){
+				var scale:Number = menuClip.mode4Button.textField.width / menuClip.mode4Button.textField.textWidth;
+				menuClip.mode4Button.textField.y += menuClip.mode4Button.textField.height * scale / 2
+				menuClip.mode4Button.textField.scaleX = scale;
+				menuClip.mode4Button.textField.scaleY = scale;
+			}
+			menuClip.mode4Button.textField.autoSize = TextFieldAutoSize.CENTER;*/
+			
+			menuClip.mode4Button.addEventListener(MouseEvent.CLICK, mode4Click);
+			
+			menuClip.setKeysButton.textField.text = "SET KEYS";
+			menuClip.setKeysButton.addEventListener(MouseEvent.CLICK, setKeysClick);
+			
+			menuClip.legacyClip = replaceWithValveComponent(this.menuClip.legacyClip, "DotaCheckBoxDota", false);
+			menuClip.legacyClip.label = "";
+			menuClip.legacyClip.addEventListener(MouseEvent.CLICK, legacyToggle);
+			
+			if (gameData.UseLegacy == "1"){
+				menuClip.legacyClip.selected = true;
+				useLegacy = true;
+			}
+			else{
+				menuClip.legacyClip.selected = false;
+				useLegacy = false;
+			}
 			
 			gameClip.retryButton.textField.text = "RETRY";
 			gameClip.retryButton.addEventListener(MouseEvent.CLICK, retryClick);
@@ -138,10 +220,10 @@
 			gameClip.visible = false;
 			retryClip.visible = false;
 			countdown.visible = false;
+			keySetClip.visible = false;
 			
 			stage.addEventListener(KeyboardEvent.KEY_DOWN, keyHit);
 			
-			gameData = minigameAPI.getData();
 			fadeClipHeight = gameClip.fadeClip.height;
 			fadeClipY = gameClip.fadeClip.y;
 			
@@ -164,6 +246,10 @@
 		}
 		
 		public override function close() : Boolean{
+			if (gameTimer != null)
+				gameTimer.stop();
+			if (countdownTimer != null)
+				countdownTimer.stop();
 			return true;
 		}
 		
@@ -215,6 +301,9 @@
 			
 			this.countdown.text = "3";
 			gameClip.clockTime.text = "0.000";
+			gameClip.dText.text = dCharacter;
+			if (useLegacy)
+				gameClip.dText.text = "";
 			
 			menuClip.visible = false;
 			gameClip.visible = true;
@@ -262,6 +351,9 @@
 			refreshUsed = false;
 			var prevSpell:String = currentSpell;
 			currentSpell = "invoker_empty1";
+			if (useLegacy)
+				gameClip.dText.text = "";
+				
 			globals.LoadAbilityImage(currentSpell,gameClip.dclip); this.gameClip.dclip.width = 40; gameClip.dclip.height = 40;
 			
 			toInvoke = 0;
@@ -269,6 +361,10 @@
 			invokeClipList = new Vector.<AbilityImage>();
 			invokeArrowList = new Vector.<ArrowClip>();
 			var spell:String;
+			
+			var used:Object = new Object();
+			var refreshNeeded:Boolean = false;
+			var i:int = 0;
 			
 			if (gameMode == TENINVOKES){
 				spell = prevSpell;
@@ -280,10 +376,45 @@
 			else if (gameMode == FIVECOMBOS){
 				var size:int = combosSize[invokesToGo];
 				
-				var used:Object = new Object();
-				var refreshNeeded:Boolean = false;
-				
-				for (var i:int=0; i<size; i++){
+				for (i=0; i<size; i++){
+					spell = spellNames[Math.floor(Math.random() * 10)];
+					
+					if (used[spell]){
+						if (!refreshNeeded){
+							refreshNeeded = true;
+							used = new Object();
+						}
+						else{
+							i--;
+							continue;
+						}
+					}
+					
+					used[spell] = true;
+					invokeList.push(spell);
+				}
+			}
+			else if (gameMode == TWENTYFLAWLESS){
+				for (i=0; i<10; i++){
+					spell = spellNames[Math.floor(Math.random() * 10)];
+					
+					if (used[spell]){
+						if (!refreshNeeded){
+							refreshNeeded = true;
+							used = new Object();
+						}
+						else{
+							i--;
+							continue;
+						}
+					}
+					
+					used[spell] = true;
+					invokeList.push(spell);
+				}
+			}
+			else if (gameMode == ULTIMATE){
+				for (i=0; i<10; i++){
 					spell = spellNames[Math.floor(Math.random() * 10)];
 					
 					if (used[spell]){
@@ -354,16 +485,17 @@
 		private function keyHit(e:KeyboardEvent){
 			if (!consumingInput)
 				return;
-			if (e.keyCode == Keyboard.Q){
+				
+			if (e.keyCode == keyBinds[0]){
 				pushAndMove(QUAS, new AbilityImage("invoker_quas", globals));
 			}
-			else if(e.keyCode == Keyboard.W){
+			else if(e.keyCode == keyBinds[1]){
 				pushAndMove(WEX, new AbilityImage("invoker_wex", globals));
 			}
-			else if(e.keyCode == Keyboard.E){
+			else if(e.keyCode == keyBinds[2]){
 				pushAndMove(EXORT, new AbilityImage("invoker_exort", globals));
 			}
-			else if(e.keyCode == Keyboard.R){
+			else if(e.keyCode == keyBinds[3]){
 				if (invokeCooldown){
 					globals.GameInterface.PlaySound(soundInvokeCooldown);
 					return;
@@ -389,6 +521,12 @@
 					trace(currentSpell);
 					globals.LoadAbilityImage(currentSpell,gameClip.dclip); this.gameClip.dclip.width = 40; gameClip.dclip.height = 40;
 					invokeCooldown = true;
+					gameClip.dText.visible = true;
+					
+					if (useLegacy){
+						dKeyCode = legacyBinds[currentSpell];
+						gameClip.dText.text = legacyBindChars[currentSpell];
+					}
 					
 					gameClip.fadeClip.height = fadeClipHeight;
 					gameClip.fadeClip.y = fadeClipY;
@@ -407,7 +545,7 @@
 					}
 				}
 			}
-			else if(e.keyCode == Keyboard.D){
+			else if(e.keyCode == dKeyCode){
 				if (currentSpell == "invoker_empty1" || usedSpells[currentSpell])
 					return;
 				
@@ -429,6 +567,12 @@
 					usedSpells = new Object();
 					refreshUsed = false;
 					globals.GameInterface.PlaySound(soundCastFailure);
+					
+					if (gameMode == ULTIMATE || gameMode == TWENTYFLAWLESS){
+						invokesToGo = totalInvokes;
+						nextInvoke();
+					}
+					
 					return;
 				}
 				
@@ -452,7 +596,7 @@
 				usedSpells[currentSpell] = true;
 				gameClip.abilityMask.visible = true;
 			}
-			else if(e.keyCode == Keyboard.NUMBER_1){
+			else if(e.keyCode == keyBinds[5]){
 				trace('key 1')
 				if (refreshUsed)
 					return;
@@ -590,6 +734,131 @@
 			beginGame();
 		}
 		
+		private function mode3Click(e:MouseEvent){
+			gameMode = TWENTYFLAWLESS;
+			totalInvokes = 2;
+			leaderboard = "Twenty Flawless";
+			if (gameData["Twenty Flawless"] == null){
+				gameData["Twenty Flawless"] = 600000;
+			}
+			
+			beginGame();
+		}
+		
+		private function mode4Click(e:MouseEvent){
+			gameMode = ULTIMATE;
+			totalInvokes = 5;
+			leaderboard = "Ultimate Invoker";
+			if (gameData["Ultimate Invoker"] == null){
+				gameData["Ultimate Invoker"] = 600000;
+			}
+			
+			beginGame();
+		}
+		
+		private function setKeysClick(e:MouseEvent){
+			trace('SET KEYS');
+			consumingInput = true;
+			stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyHit);
+			stage.addEventListener(KeyboardEvent.KEY_DOWN, keySet);
+			setKeyIndex = 0;
+			
+			menuClip.visible = false;
+			keySetClip.visible = true;
+			
+			globals.LoadAbilityImage("invoker_quas",keySetClip.spellClip); keySetClip.spellClip.width = 64; keySetClip.spellClip.height = 64;
+			trace(keySetClip.bottomText);
+			trace(keySetClip.bottomText.text);
+			keySetClip.bottomText.text = "Default: Q";
+			keySetClip.refresherClip.visible = false;
+			
+			if (!consumingInput){
+				globals.GameInterface.AddKeyInputConsumer();
+				consumingInput = true;
+			}
+		}
+		
+		private function keySet(e:KeyboardEvent){
+			trace('key hit: ' + String.fromCharCode(e.charCode) + " -- " + e.keyCode);
+			
+			var character:String = String.fromCharCode(e.charCode).toUpperCase();
+			switch(setKeyIndex){
+				case 0:
+					gameData.QCode = e.keyCode.toString();
+					gameData.QChar = character;
+					gameClip.qText.text = character;
+					
+					globals.LoadAbilityImage("invoker_wex",keySetClip.spellClip); keySetClip.spellClip.width = 64; keySetClip.spellClip.height = 64;
+					keySetClip.bottomText.text = "Default: W";
+					break;
+				case 1:
+					gameData.WCode = e.keyCode.toString();
+					gameData.WChar = character;
+					gameClip.wText.text = character;
+					
+					globals.LoadAbilityImage("invoker_exort",keySetClip.spellClip); keySetClip.spellClip.width = 64; keySetClip.spellClip.height = 64;
+					keySetClip.bottomText.text = "Default: E";
+					break;
+				case 2:
+					gameData.ECode = e.keyCode.toString();
+					gameData.EChar = character;
+					gameClip.eText.text = character;
+					
+					globals.LoadAbilityImage("invoker_invoke",keySetClip.spellClip); keySetClip.spellClip.width = 64; keySetClip.spellClip.height = 64;
+					keySetClip.bottomText.text = "Default: R";
+					break;
+				case 3:
+					gameData.RCode = e.keyCode.toString();
+					gameData.RChar = character;
+					gameClip.rText.text = character;
+					
+					globals.LoadAbilityImage("invoker_empty1",keySetClip.spellClip); keySetClip.spellClip.width = 64; keySetClip.spellClip.height = 64;
+					keySetClip.bottomText.text = "CAST SPELL - Default: D";
+					break;
+				case 4:
+					gameData.DCode = e.keyCode.toString();
+					gameData.DChar = character;
+					gameClip.dText.text = character;
+					dCharacter = character;
+					dKeyCode = e.keyCode;
+					
+					keySetClip.refresherClip.visible = true;
+					keySetClip.bottomText.text = "Default: 1";
+					break;
+				case 5:
+					gameData.RefresherCode = e.keyCode.toString();
+					gameData.RefresherChar = character;
+					gameClip.refresherText.text = character;
+					break;
+			}
+			
+			keyBinds[setKeyIndex] = e.keyCode;
+			
+			setKeyIndex++;
+			
+			if (setKeyIndex == 6){
+				stage.addEventListener(KeyboardEvent.KEY_DOWN, keyHit);
+				stage.removeEventListener(KeyboardEvent.KEY_DOWN, keySet);
+				if (consumingInput){
+					globals.GameInterface.RemoveKeyInputConsumer();
+					consumingInput = false;
+				}
+				
+				keySetClip.visible = false;
+				menuClip.visible = true;
+				minigameAPI.saveData();
+			}
+		}
+		
+		private function legacyToggle(e:MouseEvent){
+			useLegacy = !useLegacy;
+			gameData.UseLegacy = useLegacy;
+			if (!useLegacy){
+				dKeyCode = keyBinds[4];
+			}
+			minigameAPI.saveData();
+		}
+		
 		private function submitClick(e:MouseEvent){
 			this.minigameAPI.updateLeaderboard(leaderboard, score);
 			retryClip.submitButton.textField.text = "SUBMITTED!";
@@ -618,6 +887,31 @@
                 result = _ZEROS.substr(0, z - result.length) + result;
             return result;
         }
+		
+		public function replaceWithValveComponent(mc:MovieClip, type:String, keepDimensions:Boolean = false, addAt:int = -1) : MovieClip {
+			var parent = mc.parent;
+			var oldx = mc.x;
+			var oldy = mc.y;
+			var oldwidth = mc.width;
+			var oldheight = mc.height;
+			
+			var newObjectClass = getDefinitionByName(type);
+			var newObject = new newObjectClass();
+			newObject.x = oldx;
+			newObject.y = oldy;
+			if (keepDimensions) {
+				newObject.width = oldwidth;
+				newObject.height = oldheight;
+			}
+			
+			parent.removeChild(mc);
+			if (addAt == -1)
+				parent.addChild(newObject);
+			else
+				parent.addChildAt(newObject, 0);
+			
+			return newObject;
+		}
 	}
 	
 }
