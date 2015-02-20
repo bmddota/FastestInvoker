@@ -19,6 +19,10 @@
 	import flash.text.TextField;
 	import flash.text.TextFieldAutoSize;
 	import flashx.textLayout.utils.CharacterUtil;
+	import scaleform.clik.data.DataProvider;
+	import scaleform.clik.events.ListEvent;
+	import flash.text.TextFormatAlign;
+	import flash.text.TextFormat;
 	
 	public class FastestInvoker extends Minigame {
 		private static const _ZEROS:String = "0000000000000000000000000000000000000000"; // 40 zeros, shorten/expand as you wish
@@ -89,7 +93,7 @@
 										"invoker_cold_snap":"Y"};
 		
 		private var gameData:Object;
-		
+		private var leaderboardData:Object = null;
 		
 		private var combosSize:Array = new Array(6,5,4,3,2);
 		private var spellNames:Array = new Array("invoker_sun_strike",
@@ -128,8 +132,8 @@
 		private var soundEndNewBest:String = "crowd.lv_04";
 		
 		public function FastestInvoker() {
-			this.title = "FASTEST INVOKER";
-			this.minigameID = "112871c41019e5cbb2fc0e0d08e7d518";
+			this.title = "#minigame_title";
+			this.minigameID = "112871c41019e5cbb2fc0e0d08e7d518"; //"15576bc9fbed2bcae15ad893bc9e2586"; //112871c41019e5cbb2fc0e0d08e7d518
 			//gotoAndStop(2);
 			stop();
 		}
@@ -178,6 +182,9 @@
 			menuClip.mode3Button.textField.text = "20 FLAWLESS";
 			menuClip.mode3Button.addEventListener(MouseEvent.CLICK, mode3Click);
 			menuClip.mode4Button.textField.text = "ULTIMATE";
+			menuClip.mode4Button.addEventListener(MouseEvent.CLICK, mode4Click);
+			menuClip.leaderboardButton.textField.text = minigameAPI.translate("#leaderboard");
+			menuClip.leaderboardButton.addEventListener(MouseEvent.CLICK, leaderboardClick);
 			/*if (menuClip.mode4Button.textField.textWidth > menuClip.mode4Button.textField.width){
 				var scale:Number = menuClip.mode4Button.textField.width / menuClip.mode4Button.textField.textWidth;
 				menuClip.mode4Button.textField.y += menuClip.mode4Button.textField.height * scale / 2
@@ -186,9 +193,10 @@
 			}
 			menuClip.mode4Button.textField.autoSize = TextFieldAutoSize.CENTER;*/
 			
-			menuClip.mode4Button.addEventListener(MouseEvent.CLICK, mode4Click);
-			
-			menuClip.setKeysButton.textField.text = "SET KEYS";
+			menuClip.titleLabel.text = minigameAPI.translate("#minigame_title");
+			menuClip.legacyLabel.text = minigameAPI.translate("#legacy_label");
+			menuClip.bottomText.text = minigameAPI.translate("#game_description");
+			menuClip.setKeysButton.textField.text = minigameAPI.translate("#set_keys");
 			menuClip.setKeysButton.addEventListener(MouseEvent.CLICK, setKeysClick);
 			
 			menuClip.legacyClip = replaceWithValveComponent(this.menuClip.legacyClip, "DotaCheckBoxDota", false);
@@ -204,23 +212,41 @@
 				useLegacy = false;
 			}
 			
-			gameClip.retryButton.textField.text = "RETRY";
+			var leaderboardProvider = new DataProvider([{"label": "Ten Invokes", "data":"Ten Invokes"},
+				 {"label": "Five Combos", "data":"Five Combos"},
+				 {"label": "Twenty Flawless", "data":"Twenty Flawless"},
+				 {"label": "Ultimate Invoker", "data":"Ultimate Invoker"}]);
+			
+			leaderboardClip.backButton.textField.text = minigameAPI.translate("#back");
+			leaderboardClip.backButton.addEventListener(MouseEvent.CLICK, backClick);
+			leaderboardClip.dropdown = replaceWithValveComponent(leaderboardClip.dropdown, "ComboBoxSkinned", true);
+			//leaderboardClip.dropdown.rowHeight = 24;
+			leaderboardClip.dropdown.setDataProvider(leaderboardProvider);
+			leaderboardClip.dropdown.setSelectedIndex(0);
+			leaderboardClip.dropdown.menuList.addEventListener(ListEvent.INDEX_CHANGE, leaderboardChange);
+			
+			gameClip.retryButton.textField.text = minigameAPI.translate("#retry");
 			gameClip.retryButton.addEventListener(MouseEvent.CLICK, retryClick);
-			gameClip.mainmenuButton.textField.text = "MAIN MENU";
+			gameClip.mainmenuButton.textField.text = minigameAPI.translate("#main_menu");
 			gameClip.mainmenuButton.addEventListener(MouseEvent.CLICK, mainmenuClick);
 			
 			trace(5);
-			retryClip.submitButton.textField.text = "SUBMIT";
-			retryClip.retryButton.textField.text = "RETRY";
+			retryClip.submitButton.textField.text = minigameAPI.translate("#submit");
+			retryClip.retryButton.textField.text = minigameAPI.translate("#retry");
 			retryClip.retryButton.addEventListener(MouseEvent.CLICK, retryClick);
-			retryClip.mainmenuButton.textField.text = "MAIN MENU";
+			retryClip.mainmenuButton.textField.text = minigameAPI.translate("#main_menu");
 			retryClip.mainmenuButton.addEventListener(MouseEvent.CLICK, mainmenuClick);
+			retryClip.bestLabel.text = minigameAPI.translate("#best_label");
+			retryClip.timeLabel.text = minigameAPI.translate("#time_label");
+			
+			keySetClip.topText.text = minigameAPI.translate("#key_set_text");
 			
 			menuClip.visible = true;
 			gameClip.visible = false;
 			retryClip.visible = false;
 			countdown.visible = false;
 			keySetClip.visible = false;
+			leaderboardClip.visible = false;
 			
 			stage.addEventListener(KeyboardEvent.KEY_DOWN, keyHit);
 			
@@ -673,7 +699,7 @@
 			retryClip.clockTime.text = sec + "." + ms;
 			retryClip.bestTime.text = sec2 + "." + ms2;
 			
-			retryClip.submitButton.textField.text = "SUBMIT";
+			retryClip.submitButton.textField.text = minigameAPI.translate("#submit");
 			retryClip.submitButton.addEventListener(MouseEvent.CLICK, submitClick);
 			
 			menuClip.visible = false;
@@ -769,7 +795,7 @@
 			globals.LoadAbilityImage("invoker_quas",keySetClip.spellClip); keySetClip.spellClip.width = 64; keySetClip.spellClip.height = 64;
 			trace(keySetClip.bottomText);
 			trace(keySetClip.bottomText.text);
-			keySetClip.bottomText.text = "Default: Q";
+			keySetClip.bottomText.text = minigameAPI.translate("#default_q");;
 			keySetClip.refresherClip.visible = false;
 			
 			if (!consumingInput){
@@ -789,7 +815,7 @@
 					gameClip.qText.text = character;
 					
 					globals.LoadAbilityImage("invoker_wex",keySetClip.spellClip); keySetClip.spellClip.width = 64; keySetClip.spellClip.height = 64;
-					keySetClip.bottomText.text = "Default: W";
+					keySetClip.bottomText.text =  minigameAPI.translate("#default_w");
 					break;
 				case 1:
 					gameData.WCode = e.keyCode.toString();
@@ -797,7 +823,7 @@
 					gameClip.wText.text = character;
 					
 					globals.LoadAbilityImage("invoker_exort",keySetClip.spellClip); keySetClip.spellClip.width = 64; keySetClip.spellClip.height = 64;
-					keySetClip.bottomText.text = "Default: E";
+					keySetClip.bottomText.text = minigameAPI.translate("#default_e");
 					break;
 				case 2:
 					gameData.ECode = e.keyCode.toString();
@@ -805,7 +831,7 @@
 					gameClip.eText.text = character;
 					
 					globals.LoadAbilityImage("invoker_invoke",keySetClip.spellClip); keySetClip.spellClip.width = 64; keySetClip.spellClip.height = 64;
-					keySetClip.bottomText.text = "Default: R";
+					keySetClip.bottomText.text = minigameAPI.translate("#default_r");
 					break;
 				case 3:
 					gameData.RCode = e.keyCode.toString();
@@ -813,7 +839,7 @@
 					gameClip.rText.text = character;
 					
 					globals.LoadAbilityImage("invoker_empty1",keySetClip.spellClip); keySetClip.spellClip.width = 64; keySetClip.spellClip.height = 64;
-					keySetClip.bottomText.text = "CAST SPELL - Default: D";
+					keySetClip.bottomText.text = minigameAPI.translate("#default_d");
 					break;
 				case 4:
 					gameData.DCode = e.keyCode.toString();
@@ -823,7 +849,7 @@
 					dKeyCode = e.keyCode;
 					
 					keySetClip.refresherClip.visible = true;
-					keySetClip.bottomText.text = "Default: 1";
+					keySetClip.bottomText.text = minigameAPI.translate("#default_1");
 					break;
 				case 5:
 					gameData.RefresherCode = e.keyCode.toString();
@@ -860,14 +886,149 @@
 		}
 		
 		private function submitClick(e:MouseEvent){
-			this.minigameAPI.updateLeaderboard(leaderboard, score);
-			retryClip.submitButton.textField.text = "SUBMITTED!";
+			if (score > 2000)
+				this.minigameAPI.updateLeaderboard(leaderboard, score);
+			retryClip.submitButton.textField.text = minigameAPI.translate("#submitted");
 			retryClip.submitButton.enabled = false;
 			retryClip.submitButton.removeEventListener(MouseEvent.CLICK, submitClick);
 		}
 		
 		private function retryClick(e:MouseEvent){
 			beginGame();
+		}
+		
+		private function leaderboardClick(e:MouseEvent){
+			leaderboardClip.visible = true;
+			menuClip.visible = false;
+			leaderboardData = new Object();
+			
+			var leaderboard:String = leaderboardClip.dropdown.menuList.dataProvider[leaderboardClip.dropdown.selectedIndex].label;
+			
+			
+			minigameAPI.getLeaderboardTop(leaderboard, function(obj){
+				trace("CALLBACK SUCCESS");
+				if (obj.error){
+					minigameAPI.log("ERROR: " + obj.error);
+					return;
+				}
+				
+				leaderboardData[leaderboard] = obj;
+				drawLeaderboard(leaderboard);
+			});
+		}
+		
+		private function backClick(e:MouseEvent){
+			leaderboardClip.visible = false;
+			menuClip.visible = true;
+		}
+		
+		private function leaderboardChange(e:Event){
+			var leaderboard:String = leaderboardClip.dropdown.menuList.dataProvider[leaderboardClip.dropdown.selectedIndex].label;
+			trace(leaderboard);
+			
+			if (leaderboardData[leaderboard] == null){
+				minigameAPI.getLeaderboardTop(leaderboard, function(obj){
+					trace("CALLBACK SUCCESS");
+					if (obj.error){
+						minigameAPI.log("ERROR: " + obj.error);
+						return;
+					}
+					
+					leaderboardData[leaderboard] = obj;
+					drawLeaderboard(leaderboard);
+				});
+				return;
+			}
+			
+			drawLeaderboard(leaderboard);
+		}
+		
+		private function drawLeaderboard(board:String){
+			var i:int = 0;
+			for (i = leaderboardClip.left.numChildren-1; i>=0; i--){
+				leaderboardClip.left.removeChildAt(i);
+			}
+			for (i = leaderboardClip.right.numChildren-1; i>=0; i--){
+				leaderboardClip.right.removeChildAt(i);
+			}
+			
+			var data:Object = leaderboardData[board];
+			var lab:TextField;
+			var val:TextField;
+			var mc:MovieClip;
+			
+			if (data.length == null || data.length == 0){
+				lab = createTextField(18);
+				lab.text = "NO ENTRIES";
+				leaderboardClip.left.addChild(lab)
+				return;
+			}
+			
+			var ypos:Number = 2;
+			
+			for (i = 0; i<data.length && i<10; i++){
+				mc = new MovieClip();
+				mc.x = 2;
+				mc.width = 16;
+				mc.y = ypos + 4;
+				mc.height = 16;
+				mc.visible = true;
+				globals.LoadImage("img://[S" + data[i].user_id32 + "]", mc, false); mc.width = 16; mc.height = 16;
+				
+				if (data[i].user_id32 == minigameAPI.getUserID())
+					lab = createTextField(18, 0xFACC2E);
+				else
+					lab = createTextField(18, 0x00FF00);
+				lab.x = 20;
+				lab.width = 162;
+				lab.y = ypos;
+				lab.text = (data[i].user_name) ? data[i].user_name : data[i].user_id32;
+				
+				val = createTextField(18, 0xFFFFFF, TextFormatAlign.RIGHT);
+				val.x = 185;
+				val.width = 65;
+				val.y = ypos;
+				val.text = String(int(data[i].highscore_value / 1000.0)) + "." + String(Math.abs(data[i].highscore_value % 1000));
+				
+				leaderboardClip.left.addChild(mc);
+				leaderboardClip.left.addChild(lab);
+				leaderboardClip.left.addChild(val);
+				
+				ypos += 30;
+			}
+			
+			ypos = 2;
+			for (i = 10; i<data.length; i++){
+				mc = new MovieClip();
+				mc.x = 2;
+				mc.width = 16;
+				mc.y = ypos + 4;
+				mc.height = 16;
+				mc.visible = true;
+				globals.LoadImage("img://[S" + data[i].user_id32 + "]", mc, false); mc.width = 16; mc.height = 16;
+				
+				if (data[i].user_id32 == minigameAPI.getUserID())
+					lab = createTextField(18, 0xFACC2E);
+				else
+					lab = createTextField(18, 0x00FF00);
+				lab.x = 20;
+				lab.width = 162;
+				lab.y = ypos;
+				lab.text = (data[i].user_name) ? data[i].user_name : data[i].user_id32;
+				
+				val = createTextField(18, 0xFFFFFF, TextFormatAlign.RIGHT);
+				val.x = 185;
+				val.width = 65;
+				val.y = ypos;
+				val.text = String(int(data[i].highscore_value / 1000.0)) + "." + String(Math.abs(data[i].highscore_value % 1000));
+				
+				leaderboardClip.right.addChild(mc);
+				leaderboardClip.right.addChild(lab);
+				leaderboardClip.right.addChild(val);
+				
+				ypos += 30;
+			}
+			
 		}
 		
 		private function mainmenuClick(e:MouseEvent){
@@ -911,6 +1072,28 @@
 				parent.addChildAt(newObject, 0);
 			
 			return newObject;
+		}
+		
+		public function createTextField(size:uint = 18, color:uint = 0xFFFFFF, align:String = TextFormatAlign.LEFT) : TextField{
+			var tf:TextFormat = globals.Loader_chat.movieClip.chat_main.chat.ChatInputBox.textField.getTextFormat();
+			var field:TextField = new TextField();
+			field.height = size + 4;
+			field.width = 200;
+
+			tf.size = size;
+			tf.color = color;
+			tf.align = align;
+			//tf.font = "$TextFont*"; // Dunno what do on this
+			field.setTextFormat(tf);
+			field.defaultTextFormat = tf;
+			field.autoSize = "none";
+			field.maxChars = 0;
+			//field.type = TextFieldType.DYNAMIC;
+			
+			field.visible = true;
+			field.text = "";
+			
+			return field;
 		}
 	}
 	
