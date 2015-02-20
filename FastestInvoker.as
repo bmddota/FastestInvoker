@@ -94,6 +94,7 @@
 		
 		private var gameData:Object;
 		private var leaderboardData:Object = null;
+		private var leaderboardTimer:Timer = null;
 		
 		private var combosSize:Array = new Array(6,5,4,3,2);
 		private var spellNames:Array = new Array("invoker_sun_strike",
@@ -943,7 +944,7 @@
 			drawLeaderboard(leaderboard);
 		}
 		
-		private function drawLeaderboard(board:String){
+		private function drawLeaderboard(board:String, refresh:Boolean = true){
 			var i:int = 0;
 			for (i = leaderboardClip.left.numChildren-1; i>=0; i--){
 				leaderboardClip.left.removeChildAt(i);
@@ -994,6 +995,8 @@
 				leaderboardClip.left.addChild(lab);
 				leaderboardClip.left.addChild(val);
 				
+				
+				
 				ypos += 30;
 			}
 			
@@ -1029,6 +1032,19 @@
 				ypos += 30;
 			}
 			
+			if (refresh){
+				var fun:Function = (function(){return function(e:TimerEvent){
+					trace("timer: ");
+					drawLeaderboard(board, false);
+					leaderboardTimer = null;
+				};})();
+				
+				if (leaderboardTimer != null)
+					leaderboardTimer.stop();
+				leaderboardTimer = new Timer(50,1);
+				leaderboardTimer.addEventListener(TimerEvent.TIMER, fun);
+				leaderboardTimer.start();
+			}
 		}
 		
 		private function mainmenuClick(e:MouseEvent){
