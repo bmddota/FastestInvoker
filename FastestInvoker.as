@@ -1090,7 +1090,7 @@
 			return newObject;
 		}
 		
-		public function createTextField(size:uint = 18, color:uint = 0xFFFFFF, align:String = TextFormatAlign.LEFT) : TextField{
+		public function createTextField(size:uint = 18, color:uint = 0xFFFFFF, align:String = TextFormatAlign.LEFT, font:String = "$TextFont") : TextField{
 			var tf:TextFormat = globals.Loader_chat.movieClip.chat_main.chat.ChatInputBox.textField.getTextFormat();
 			var field:TextField = new TextField();
 			field.height = size + 4;
@@ -1099,7 +1099,7 @@
 			tf.size = size;
 			tf.color = color;
 			tf.align = align;
-			//tf.font = "$TextFont*"; // Dunno what do on this
+			tf.font = font;
 			field.setTextFormat(tf);
 			field.defaultTextFormat = tf;
 			field.autoSize = "none";
