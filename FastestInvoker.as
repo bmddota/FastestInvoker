@@ -249,8 +249,6 @@
 			keySetClip.visible = false;
 			leaderboardClip.visible = false;
 			
-			stage.addEventListener(KeyboardEvent.KEY_DOWN, keyHit);
-			
 			fadeClipHeight = gameClip.fadeClip.height;
 			fadeClipY = gameClip.fadeClip.y;
 			
@@ -277,6 +275,13 @@
 				gameTimer.stop();
 			if (countdownTimer != null)
 				countdownTimer.stop();
+			
+			if (consumingInput){
+				globals.GameInterface.RemoveKeyInputConsumer();
+				consumingInput = false;
+				stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyHit);
+			}
+			
 			return true;
 		}
 		
@@ -324,6 +329,12 @@
 			countdownTimer.addEventListener(TimerEvent.TIMER_COMPLETE, countdownDone);
 			countdownTimer.start();
 			
+			if (!consumingInput){
+				globals.GameInterface.AddKeyInputConsumer();
+				consumingInput = true;
+				stage.addEventListener(KeyboardEvent.KEY_DOWN, keyHit);
+			}
+			
 			globals.GameInterface.PlaySound(soundCountdown);
 			
 			this.countdown.text = "3";
@@ -349,6 +360,7 @@
 			if (!consumingInput){
 				globals.GameInterface.AddKeyInputConsumer();
 				consumingInput = true;
+				stage.addEventListener(KeyboardEvent.KEY_DOWN, keyHit);
 			}
 			
 			nextInvoke();
@@ -711,6 +723,7 @@
 			if (consumingInput){
 				globals.GameInterface.RemoveKeyInputConsumer();
 				consumingInput = false;
+				stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyHit);
 			}
 		}
 		
@@ -786,7 +799,6 @@
 		private function setKeysClick(e:MouseEvent){
 			trace('SET KEYS');
 			consumingInput = true;
-			stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyHit);
 			stage.addEventListener(KeyboardEvent.KEY_DOWN, keySet);
 			setKeyIndex = 0;
 			
@@ -864,7 +876,6 @@
 			setKeyIndex++;
 			
 			if (setKeyIndex == 6){
-				stage.addEventListener(KeyboardEvent.KEY_DOWN, keyHit);
 				stage.removeEventListener(KeyboardEvent.KEY_DOWN, keySet);
 				if (consumingInput){
 					globals.GameInterface.RemoveKeyInputConsumer();
